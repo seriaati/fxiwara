@@ -44,15 +44,15 @@ def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.HTMLResp
     response = requests.get(api_url)
     data = response.json()
 
-    file_url = data["fileUrl"]
-    file_response = requests.get(
-        file_url, headers={"x-version": "cc8b2b7d31592a95c1701fb0fb32b04d78e4de32"}
-    )
-    file_data = file_response.json()
+    # file_url = data["fileUrl"]
+    # file_response = requests.get(
+    #     file_url, headers={"x-version": "cc8b2b7d31592a95c1701fb0fb32b04d78e4de32"}
+    # )
+    # file_data = file_response.json()
 
-    p360 = next(d for d in file_data if d["name"] == "360")
-    video_url = "https:" + p360["src"]["download"]
-    proxy_url = f"https://fxiwara.seria.moe/proxy?url={video_url}"
+    # p360 = next(d for d in file_data if d["name"] == "360")
+    # video_url = "https:" + p360["src"]["download"]
+    # proxy_url = f"https://fxiwara.seria.moe/proxy?url={video_url}"
 
     html = f"""
     <html>
@@ -64,8 +64,6 @@ def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.HTMLResp
         <meta property="og:type" content="video">
         <meta property="og:site_name" content="👁️ Views: {data['numViews']}\n👍 Likes: {data['numLikes']}">
         <meta property="og:url" content="{url}">
-        <meta property="og:video" content="{proxy_url}">
-        <meta property="og:video:secure_url" content="{proxy_url}">
         <meta property="og:video:type" content="video/mp4">
         
         <script>
@@ -77,7 +75,7 @@ def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.HTMLResp
     
     <body>
         <p>Redirecting you to the Iwara video...</p>
-        <p>If you are not redirected automatically, <a href="{proxy_url}">click here</a>.</p>
+        <p>If you are not redirected automatically, <a href="{url}">click here</a>.</p>
     </body>
     
     </html>
