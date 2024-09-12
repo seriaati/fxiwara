@@ -10,6 +10,24 @@ def index() -> fastapi.responses.RedirectResponse:
     return fastapi.responses.RedirectResponse("https://github.com/seriaati/fxiwara")
 
 
+@app.get("/dl/{video_id}/{quality}")
+async def download_video_endpoint(
+    video_id: str, quality: str
+) -> fastapi.responses.RedirectResponse:
+    api_url = f"https://api.iwara.tv/video/{video_id}"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(api_url)
+        data = response.json()
+        file_url = data["fileUrl"]
+
+        file_data = await client.get(
+            file_url, headers={"x-version": "9ad9f65ae305cb10567e9da29238cfabe4bf4ee6"}
+        )
+        video_data = next(d for d in file_data if d["name"] == quality)
+
+        return video_data["src"]["download"]
+
+
 @app.get("/video/{video_id}/{video_name}")
 async def video_endpoint(
     video_id: str, video_name: str
