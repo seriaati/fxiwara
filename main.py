@@ -35,6 +35,34 @@ async def video_proxy(
     return fastapi.responses.Response(content=video.content, media_type="video/mp4")
 
 
+@app.get("/stream-proxy")
+async def video_stream_proxy(
+    url: str, path: str, expires: str, hash: str
+) -> fastapi.responses.StreamingResponse:
+    url = unquote(url)
+    proxy_url = f"{url}&path={path}&expires={expires}&hash={hash}"
+
+    headers = {
+        "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36",
+        "referer": "https://iwara.tv/",
+        "sec-ch-ua": '"Not;A=Brand";v="24", "Chromium";v="128"',
+        "sec-ch-ua-mobile": "?1",
+        "sec-ch-ua-platform": "Android",
+        "sec-fetch-dest": "video",
+        "sec-fetch-mode": "no-cors",
+        "sec-fetch-site": "same-site",
+    }
+
+    async def video_stream():
+        async with httpx.AsyncClient() as client:
+            async with client.stream("GET", proxy_url, headers=headers) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_bytes():
+                    yield chunk
+
+    return fastapi.responses.StreamingResponse(video_stream(), media_type="video/mp4")
+
+
 @app.exception_handler(httpx.HTTPStatusError)
 async def http_exception_handler(
     request: fastapi.Request, exc: httpx.HTTPStatusError
