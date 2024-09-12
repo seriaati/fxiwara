@@ -39,7 +39,7 @@ async def video_proxy(
 async def video_endpoint(
     video_id: str, video_name: str
 ) -> fastapi.responses.HTMLResponse:
-    url = f"https://iwara.tv/videos/{video_id}/{video_name}"
+    url = f"https://iwara.tv/video/{video_id}/{video_name}"
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
     async with httpx.AsyncClient() as client:
@@ -70,8 +70,8 @@ async def video_endpoint(
         <meta property="og:type" content="video">
         <meta property="og:site_name" content="👁️ Views: {data['numViews']}\n👍 Likes: {data['numLikes']}">
         <meta property="og:url" content="{url}">
-        <meta property="og:video" content="{proxy_url}">
-        <meta property="og:video:secure_url" content="{proxy_url}">
+        <meta property="og:video" content="{video_url}">
+        <meta property="og:video:secure_url" content="{video_url}">
         <meta property="og:video:type" content="video/mp4">
         
         <script>
@@ -82,7 +82,7 @@ async def video_endpoint(
     </head>
     
     <body>
-        <p>Redirecting you to the Twitch clip...</p>
+        <p>Redirecting you to the Iwara video...</p>
         <p>If you are not redirected automatically, <a href="{url}">click here</a>.</p>
     </body>
     
