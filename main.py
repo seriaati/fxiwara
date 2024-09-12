@@ -15,7 +15,7 @@ def index() -> fastapi.responses.RedirectResponse:
 @app.get("/proxy")
 async def video_proxy(
     url: str, path: str, expires: str, hash: str
-) -> fastapi.responses.StreamingResponse:
+) -> fastapi.responses.Response:
     url = unquote(url)
     proxy_url = f"{url}&path={path}&expires={expires}&hash={hash}"
 
@@ -29,15 +29,10 @@ async def video_proxy(
         "sec-fetch-mode": "no-cors",
         "sec-fetch-site": "same-site",
     }
+    async with httpx.AsyncClient() as client:
+        video = await client.get(proxy_url, headers=headers)
 
-    async def video_stream():
-        async with httpx.AsyncClient() as client:
-            async with client.stream("GET", proxy_url, headers=headers) as response:
-                response.raise_for_status()
-                async for chunk in response.aiter_bytes():
-                    yield chunk
-
-    return fastapi.responses.StreamingResponse(video_stream(), media_type="video/mp4")
+    return fastapi.responses.Response(content=video.content, media_type="video/mp4")
 
 
 @app.exception_handler(httpx.HTTPStatusError)
