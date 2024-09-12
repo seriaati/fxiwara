@@ -1,0 +1,9 @@
+{
+    "apps": [
+        {
+            "name": "fxiwara",
+            "script": "./main.py",
+            "interpreter": "./.venv/bin/python"
+        }
+    ]
+}

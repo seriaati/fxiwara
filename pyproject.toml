@@ -1,0 +1,13 @@
+[project]
+authors = [{email = "seria.ati@gmail.com", name = "seriaati"}]
+dependencies = [
+    "fastapi>=0.114.1",
+    "httpx>=0.27.2",
+    "uvicorn>=0.30.6",
+]
+description = "Fix Iwara Discord embeds."
+license = {file = "LICENSE"}
+name = "fxiwara"
+readme = "README.md"
+requires-python = ">=3.11"
+version = "0.1.0"
