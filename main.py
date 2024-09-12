@@ -60,7 +60,7 @@ async def video_endpoint(
         file_data = file_response.json()
 
         preview = next(d for d in file_data if d["name"] == "preview")
-        video_url = "https:" + preview["src"]["view"]
+        video_url = "https:" + preview["src"]["download"]
         proxy_url = f"https://fxiwara.seria.moe/proxy?url={video_url}"
 
     html = f"""
