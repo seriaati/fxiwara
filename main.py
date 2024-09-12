@@ -2,7 +2,6 @@ from urllib.parse import unquote
 
 import fastapi
 import httpx
-import requests
 import uvicorn
 
 app = fastapi.FastAPI()
@@ -16,7 +15,7 @@ def index() -> fastapi.responses.RedirectResponse:
 @app.get("/proxy")
 async def video_proxy(
     url: str, path: str, expires: str, hash: str
-) -> fastapi.responses.Response:
+) -> fastapi.responses.StreamingResponse:
     url = unquote(url)
     proxy_url = f"{url}&path={path}&expires={expires}&hash={hash}"
 
@@ -30,28 +29,44 @@ async def video_proxy(
         "sec-fetch-mode": "no-cors",
         "sec-fetch-site": "same-site",
     }
-    async with httpx.AsyncClient() as client:
-        video = await client.get(proxy_url, headers=headers)
 
-    return fastapi.responses.Response(content=video.content, media_type="video/mp4")
+    async def video_stream():
+        async with httpx.AsyncClient() as client:
+            async with client.stream("GET", proxy_url, headers=headers) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_bytes():
+                    yield chunk
+
+    return fastapi.responses.StreamingResponse(video_stream(), media_type="video/mp4")
+
+
+@app.exception_handler(httpx.HTTPStatusError)
+async def http_exception_handler(
+    request: fastapi.Request, exc: httpx.HTTPStatusError
+) -> fastapi.Response:
+    return fastapi.Response(content=str(exc), status_code=exc.response.status_code)
 
 
 @app.get("/video/{video_id}/{video_name}")
-def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.HTMLResponse:
+async def video_endpoint(
+    video_id: str, video_name: str
+) -> fastapi.responses.HTMLResponse:
     url = f"https://iwara.tv/video/{video_id}/{video_name}"
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
-    response = requests.get(api_url)
-    data = response.json()
+    async with httpx.AsyncClient() as client:
+        response = await client.get(api_url)
+        data = response.json()
 
-    file_url = data["fileUrl"]
-    file_response = requests.get(
-        file_url, headers={"x-version": "cc8b2b7d31592a95c1701fb0fb32b04d78e4de32"}
-    )
-    file_data = file_response.json()
+        file_url = data["fileUrl"]
+        file_response = await client.get(
+            file_url, headers={"x-version": "cc8b2b7d31592a95c1701fb0fb32b04d78e4de32"}
+        )
+        file_data = file_response.json()
 
-    p360 = next(d for d in file_data if d["name"] == "360")
-    video_url = "https:" + p360["src"]["view"]
+        p360 = next(d for d in file_data if d["name"] == "360")
+        video_url = "https:" + p360["src"]["view"]
+        proxy_url = f"https://fxiwara.seria.moe/proxy?url={video_url}"
 
     html = f"""
     <html>
@@ -63,8 +78,8 @@ def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.HTMLResp
         <meta property="og:type" content="video">
         <meta property="og:site_name" content="👁️ Views: {data['numViews']}\n👍 Likes: {data['numLikes']}">
         <meta property="og:url" content="{url}">
-        <meta property="og:video" content="{video_url}">
-        <meta property="og:video:secure_url" content="{video_url}">
+        <meta property="og:video" content="{proxy_url}">
+        <meta property="og:video:secure_url" content="{proxy_url}">
         <meta property="og:video:type" content="video/mp4">
         
         <script>
