@@ -15,17 +15,24 @@ async def download_video_endpoint(
     video_id: str, quality: str
 ) -> fastapi.responses.RedirectResponse:
     api_url = f"https://api.iwara.tv/video/{video_id}"
+
     async with httpx.AsyncClient() as client:
         response = await client.get(api_url)
         data = response.json()
         file_url = data["fileUrl"]
 
         file_data = await client.get(
-            file_url, headers={"x-version": "9ad9f65ae305cb10567e9da29238cfabe4bf4ee6"}
+            file_url, headers={"x-version": "00d377d9a3d18587749666e69858d607e396fb5a"}
         )
-        video_data = next(d for d in file_data if d["name"] == quality)
+        file_response = file_data.json()
+        video_data = next((d for d in file_response if d["name"] == quality), None)
 
-        return video_data["src"]["download"]
+        if video_data is None:
+            raise fastapi.HTTPException(
+                status_code=404, detail=f"Quality {quality} not found."
+            )
+
+        return fastapi.responses.RedirectResponse(video_data["src"]["download"])
 
 
 @app.get("/video/{video_id}/{video_name}")
