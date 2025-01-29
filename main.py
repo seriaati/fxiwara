@@ -1,8 +1,26 @@
-import fastapi
-import httpx
+from contextlib import asynccontextmanager
+import logging
+from typing import AsyncGenerator
 import uvicorn
 
-app = fastapi.FastAPI()
+import fastapi
+from aiohttp_client_cache.session import CachedSession
+from aiohttp_client_cache.backends.sqlite import SQLiteBackend
+
+
+@asynccontextmanager
+async def app_lifespan(app: fastapi.FastAPI) -> AsyncGenerator[None, None]:
+    app.state.client = CachedSession(
+        cache=SQLiteBackend(cache_name="cache.db", expire_after=3600),
+    )
+    try:
+        yield
+    finally:
+        await app.state.client.close()
+
+
+logger = logging.getLogger("uvicorn")
+app = fastapi.FastAPI(lifespan=app_lifespan)
 
 
 @app.get("/")
@@ -14,37 +32,39 @@ def index() -> fastapi.responses.RedirectResponse:
 async def download_video_endpoint(
     video_id: str, quality: str
 ) -> fastapi.responses.RedirectResponse:
+    client: CachedSession = app.state.client
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(api_url)
-        data = response.json()
-        file_url = data["fileUrl"]
+    async with client.get(api_url) as resp:
+        data = await resp.json()
 
-        file_data = await client.get(
-            file_url, headers={"x-version": "00d377d9a3d18587749666e69858d607e396fb5a"}
+    async with client.get(
+        data["fileUrl"],
+        headers={"x-version": "00d377d9a3d18587749666e69858d607e396fb5a"},
+    ) as resp:
+        file_response = await resp.json()
+
+    video_data = next((d for d in file_response if d["name"] == quality), None)
+    if video_data is None:
+        raise fastapi.HTTPException(
+            status_code=404, detail=f"Quality {quality} not found."
         )
-        file_response = file_data.json()
-        video_data = next((d for d in file_response if d["name"] == quality), None)
 
-        if video_data is None:
-            raise fastapi.HTTPException(
-                status_code=404, detail=f"Quality {quality} not found."
-            )
-
-        return fastapi.responses.RedirectResponse(video_data["src"]["download"])
+    return fastapi.responses.RedirectResponse(video_data["src"]["download"])
 
 
 @app.get("/video/{video_id}/{video_name}")
-async def video_endpoint(
-    video_id: str, video_name: str
-) -> fastapi.responses.HTMLResponse:
+async def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.Response:
+    client: CachedSession = app.state.client
     url = f"https://iwara.tv/video/{video_id}/{video_name}"
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(api_url)
-        data = response.json()
+    try:
+        async with client.get(api_url) as resp:
+            data = await resp.json()
+    except Exception:
+        logger.exception("Failed to fetch video data.")
+        return fastapi.responses.RedirectResponse(url)
 
     html = f"""
     <html>
@@ -52,9 +72,9 @@ async def video_endpoint(
     <head>
         <meta property="charset" content="utf-8">
         <meta property="theme-color" content="#ed7042">
-        <meta property="og:title" content="{data['user']['name']} - {data['title']}">
-        <meta property="og:description" content="{data['body']}">
-        <meta property="og:site_name" content="👁️ Views: {data['numViews']}\n👍 Likes: {data['numLikes']}">
+        <meta property="og:title" content="{data["user"]["name"]} - {data["title"]}">
+        <meta property="og:description" content="{data["body"]}">
+        <meta property="og:site_name" content="👁️ Views: {data["numViews"]}\n👍 Likes: {data["numLikes"]}">
         <meta property="og:url" content="{url}">
         
         <script>
