@@ -23,6 +23,17 @@ logger = logging.getLogger("uvicorn")
 app = fastapi.FastAPI(lifespan=app_lifespan)
 
 
+async def video_streamer(video_url: str) -> AsyncGenerator[bytes, None]:
+    async with app.state.client.get(video_url) as resp:
+        if resp.status != 200:
+            raise fastapi.HTTPException(
+                status_code=resp.status, detail="Error streaming video"
+            )
+        # Stream the content in chunks (here, 1MB per chunk)
+        async for chunk in resp.content.iter_chunked(1024 * 1024):
+            yield chunk
+
+
 @app.get("/")
 def index() -> fastapi.responses.RedirectResponse:
     return fastapi.responses.RedirectResponse("https://github.com/seriaati/fxiwara")
@@ -31,7 +42,7 @@ def index() -> fastapi.responses.RedirectResponse:
 @app.get("/dl/{video_id}/{quality}")
 async def download_video_endpoint(
     video_id: str, quality: str
-) -> fastapi.responses.RedirectResponse:
+) -> fastapi.responses.StreamingResponse:
     client: CachedSession = app.state.client
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
@@ -50,7 +61,11 @@ async def download_video_endpoint(
             status_code=404, detail=f"Quality {quality} not found."
         )
 
-    return fastapi.responses.RedirectResponse(video_data["src"]["download"])
+    video_url = f"https:{video_data['src']['download']}"
+
+    return fastapi.responses.StreamingResponse(
+        video_streamer(video_url), media_type="video/mp4"
+    )
 
 
 @app.get("/video/{video_id}/{video_name}")
