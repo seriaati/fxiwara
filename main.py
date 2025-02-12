@@ -69,9 +69,15 @@ async def download_video_endpoint(
 
 
 @app.get("/video/{video_id}/{video_name}")
-async def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.Response:
+async def video_endpoint(
+    request: fastapi.Request, video_id: str, video_name: str
+) -> fastapi.responses.Response:
     client: CachedSession = app.state.client
     url = f"https://iwara.tv/video/{video_id}/{video_name}"
+
+    if "Discordbot" not in request.headers.get("User-Agent", ""):
+        return fastapi.responses.RedirectResponse(url)
+
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
     try:
@@ -83,7 +89,6 @@ async def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.Re
 
     html = f"""
     <html>
-    
     <head>
         <meta property="charset" content="utf-8">
         <meta property="theme-color" content="#ed7042">
@@ -91,19 +96,7 @@ async def video_endpoint(video_id: str, video_name: str) -> fastapi.responses.Re
         <meta property="og:description" content="{data["body"]}">
         <meta property="og:site_name" content="👁️ Views: {data["numViews"]}\n👍 Likes: {data["numLikes"]}">
         <meta property="og:url" content="{url}">
-        
-        <script>
-            window.onload = function() {{
-                window.location.href = "{url}";
-            }}
-        </script>
     </head>
-    
-    <body>
-        <p>Redirecting you to the Iwara video...</p>
-        <p>If you are not redirected automatically, <a href="{url}">click here</a>.</p>
-    </body>
-    
     </html>
     """
 
