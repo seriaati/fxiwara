@@ -39,6 +39,11 @@ def index() -> fastapi.responses.RedirectResponse:
     return fastapi.responses.RedirectResponse("https://github.com/seriaati/fxiwara")
 
 
+@app.get("/health")
+def health_check() -> dict:
+    return {"status": "ok"}
+
+
 @app.get("/dl/{video_id}/{quality}")
 async def download_video_endpoint(
     video_id: str, quality: str
