@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 import uvicorn
 
 import fastapi
