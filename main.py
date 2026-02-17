@@ -11,12 +11,14 @@ from aiohttp_client_cache.backends.redis import RedisBackend
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger("uvicorn")
 
 
 @asynccontextmanager
 async def app_lifespan(app: fastapi.FastAPI) -> AsyncGenerator[None, None]:
     redis_url = os.getenv("REDIS_URL")
     if redis_url:
+        logger.info("Using Redis cache backend.")
         app.state.client = CachedSession(
             cache=RedisBackend(
                 cache_name="fxiwara", redis_url=redis_url, expire_after=3600
@@ -33,7 +35,6 @@ async def app_lifespan(app: fastapi.FastAPI) -> AsyncGenerator[None, None]:
         await app.state.client.close()
 
 
-logger = logging.getLogger("uvicorn")
 app = fastapi.FastAPI(lifespan=app_lifespan)
 
 
