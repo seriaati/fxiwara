@@ -3,6 +3,8 @@ authors = [{email = "seria.ati@gmail.com", name = "seriaati"}]
 dependencies = [
     "aiohttp-client-cache[sqlite]>=0.12.4",
     "fastapi>=0.114.1",
+    "python-dotenv>=1.2.1",
+    "redis>=7.2.0",
     "uvicorn>=0.30.6",
 ]
 description = "Fix Iwara Discord embeds."

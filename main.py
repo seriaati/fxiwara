@@ -1,18 +1,32 @@
 from contextlib import asynccontextmanager
 import logging
 from collections.abc import AsyncGenerator
+import os
 import uvicorn
 
 import fastapi
 from aiohttp_client_cache.session import CachedSession
 from aiohttp_client_cache.backends.sqlite import SQLiteBackend
+from aiohttp_client_cache.backends.redis import RedisBackend
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 @asynccontextmanager
 async def app_lifespan(app: fastapi.FastAPI) -> AsyncGenerator[None, None]:
-    app.state.client = CachedSession(
-        cache=SQLiteBackend(cache_name="cache.db", expire_after=3600),
-    )
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        app.state.client = CachedSession(
+            cache=RedisBackend(
+                cache_name="fxiwara", redis_url=redis_url, expire_after=3600
+            ),
+        )
+    else:
+        app.state.client = CachedSession(
+            cache=SQLiteBackend(cache_name="cache.db", expire_after=3600),
+        )
+
     try:
         yield
     finally:
