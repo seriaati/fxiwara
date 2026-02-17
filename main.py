@@ -21,7 +21,7 @@ async def app_lifespan(app: fastapi.FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Using Redis cache backend.")
         app.state.client = CachedSession(
             cache=RedisBackend(
-                cache_name="fxiwara", redis_url=redis_url, expire_after=3600
+                cache_name="fxiwara", address=redis_url, expire_after=3600
             ),
         )
     else:
