@@ -66,7 +66,7 @@ async def download_video_endpoint(
     client: CachedSession = app.state.client
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
-    async with client.get(api_url) as resp:
+    async with client.get(api_url, headers={'User-Agent': 'Discordbot'}) as resp:
         data = await resp.json()
 
     async with client.get(
@@ -101,7 +101,7 @@ async def video_endpoint(
     api_url = f"https://api.iwara.tv/video/{video_id}"
 
     try:
-        async with client.get(api_url) as resp:
+        async with client.get(api_url, headers={'User-Agent': 'Discordbot'}) as resp:
             data = await resp.json()
     except Exception:
         logger.exception("Failed to fetch video data.")
